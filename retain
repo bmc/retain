@@ -1,0 +1,202 @@
+#!/usr/bin/env python
+
+"""
+"""
+
+# $Id$
+
+# Info about the module
+__version__   = "1.0"
+__author__    = "Brian Clapper, bmc <at> clapper <dot> org"
+__url__       = "http://www.clapper.org/software/python/retain/"
+__copyright__ = "(c) 2003-2006 Brian M. Clapper"
+__license__   = "BSD-style license"
+
+# Package stuff
+
+__all__     = ["retain"]
+
+
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
+
+from getopt import getopt, GetoptError
+import string
+import sys
+import os
+from sets import Set
+import stat
+import shutil
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+ADDRSEP = ', '
+NEWLINE = '\n'
+
+# ---------------------------------------------------------------------------
+# Classes
+# ---------------------------------------------------------------------------
+
+class RetainException (Exception):
+    def __init__ (self, value):
+        self.__value = value
+
+    def __str__ (self):
+        return `self.__value`
+
+    def value (self):
+        return self.__value
+
+class RetainUsageException (RetainException):
+    def __init__ (self, value):
+        RetainException.__init__ (self, value)
+
+class Verbose:
+    def __init__ (self, verbose=0):
+        self.__verbose = verbose
+
+    def println (self, msg):
+        if self.__verbose:
+            sys.stderr.write (msg + "\n")
+
+    def __call__ (self, msg):
+        self.println (msg)
+
+class FileRetainer:
+
+    def __init__ (self, argv):
+        self.__parseParams (argv)
+        self.__verbose = Verbose (self.__verbose)
+
+    def retain (self):
+        verbose = self.__verbose
+
+        verbose ("Changing directory to " + self.__dir)
+        try:
+            os.chdir (self.__dir)
+
+        except OSError, ex:
+            raise RetainException (str (ex))
+
+        for dirFile in os.listdir ("."):
+            if dirFile in self.__files:
+                verbose ("Retaining " + dirFile)
+                continue
+
+            verbose ("Deleting " + dirFile)
+            if not self.__no_exec:
+                try:
+                    mode = os.stat (dirFile)[stat.ST_MODE]
+                    if stat.S_ISDIR (mode):
+                        if (not self.__recursive):
+                            sys.stderr.write ("Skipping directory \"" +
+                                              dirFile +
+                                              "\" because -r (--recursive) " +
+                                              "was not specified.\n");
+                        else:
+                            shutil.rmtree (dirFile)
+                    else:
+                        os.unlink (dirFile)
+
+                except OSError, ex:
+                    sys.stderr.write ("Warning: Can't unlink \"" + dirFile +
+                                      "\": " + str (ex) + "\n")
+
+    # -----------------------------------------------------------------------
+    # Private Methods
+    # -----------------------------------------------------------------------
+
+    def __parseParams (self, argv):
+        # Parse the command-line parameters
+
+        try:
+            opts, args = getopt (argv[1:],
+                                 "nvrd:",
+                                 ["directory=",
+                                  "no-exec",
+                                  "recursive",
+                                  "verbose"])
+        except GetoptError, ex:
+            self.__usage (argv[0], str (ex))   # throws an exception
+
+        files = []
+        if len (args) > 0:
+            self.__files = Set (args[0:])
+        else:
+            self.__usage (argv[0], "Missing file(s) to retain.")
+
+        self.__no_exec   = 0
+        self.__verbose   = 0
+        self.__recursive = 0
+        self.__dir       = "."
+
+        for o, a in opts:
+            if o in ("--no-exec", "-n"):
+                self.__no_exec = 1
+                continue
+
+            if o in ("--verbose", "-v"):
+                self.__verbose = 1
+                continue
+
+            if o in ("--directory", "-d"):
+                self.__dir = a
+                continue
+
+            if o in ("--recursive", "-r"):
+                self.__recursive = 1
+                continue
+
+    def __usage (self, prog, msg):
+        prog = os.path.basename (prog)
+        u = [
+"Usage: " + prog + " [options] filename [...]",
+"",
+"Retain all the specified files, removing anything else.",
+"",
+"OPTIONS",
+"",
+"--directory <dir>",
+"-d <dir>           Directory to operate on. Defaults to current directory",
+"--no-exec, -n      Show what would be done, but don't really do it.",
+"--recursive, -r    Delete directories, too (recursively)",
+"--verbose, -v      Enable verbose messages"
+            ]
+
+        result = []
+
+        if msg != None:
+            result.append (msg)
+
+        for i in range (len (u)):
+            result.append (u[i])
+
+        raise RetainUsageException, result
+
+# ---------------------------------------------------------------------------
+# Main Program
+# ---------------------------------------------------------------------------
+
+def main():
+
+    try:
+        retainer = FileRetainer (sys.argv)
+        retainer.retain()
+
+    except RetainUsageException, ex:
+        for i in ex.value():
+            sys.stderr.write (i + "\n")
+        sys.exit (1)
+
+    except RetainException, ex:
+        sys.stderr.write (str (ex) + "\n")
+        sys.exit (1)
+
+    sys.exit (0)
+
+
+if __name__ == "__main__":
+    main()
