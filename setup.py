@@ -54,7 +54,7 @@ f.close()
 # Now the setup stuff.
 
 setup (name="retain",
-       version="1.0",
+       version=VERSION,
        description="delete all but the specified files/directories",
        url=URL,
        license=LICENSE,
