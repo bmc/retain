@@ -69,11 +69,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # $Id$
 
 # Info about the module
-__version__   = "1.1"
-__author__    = "Brian Clapper, bmc <at> clapper <dot> org"
-__url__       = "http://www.clapper.org/software/python/retain/"
-__copyright__ = "© 2003-2008 Brian M. Clapper"
-__license__   = "BSD-style license"
+__version__   = '1.1.1'
+__author__    = 'Brian Clapper'
+__email__     = 'bmc@clapper.org'
+__url__       = 'http://www.clapper.org/software/python/retain/'
+__copyright__ = '© 2003-2008 Brian M. Clapper'
+__license__   = 'BSD-style license'
 
 # Package stuff
 
