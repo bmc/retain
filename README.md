@@ -29,7 +29,7 @@ Brian M. Clapper, [bmc@clapper.org](mailto:bmc@clapper.org)
 
 # Copyright and License
 
-Copyright &copy; 2008-2010 Brian M. Clapper.
+Copyright &copy; 2008-2011 Brian M. Clapper.
 
 *retain* is released under a BSD License. Please see the accompanying
 License file.

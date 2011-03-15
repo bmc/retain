@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 #
 # Distutils setup script for retain
-#
-# $Id$
 # ---------------------------------------------------------------------------
 
-import ez_setup
-ez_setup.use_setuptools(download_delay=2)
 from setuptools import setup, find_packages
 import re
 import sys
