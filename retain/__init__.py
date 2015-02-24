@@ -204,6 +204,7 @@ class FileRetainer:
         for o, a in opts:
             if o in ("--no-exec", "-n"):
                 self.__no_exec = 1
+                self.__verbose = 1
                 continue
 
             if o in ("--verbose", "-v"):
