@@ -7,18 +7,18 @@ retain - Command-line utility that removes all files except the ones
 Usage:
 ------
 
-retain [OPTIONS] filename [...]
+retain [-fnrsv] [-d directory] filename [...]
 
 
 Options:
 --------
 
 --directory <dir>   The directory to operate on. Defaults to the current
--d <dir>            directory.
+-d <dir>            directory
 
 --force, -f         Do not ask for confirmation if file to retain          
 
---no-exec, -n       Show what would be done, but do not actually do it.
+--no-exec, -n       Show what would be done, but do not actually do it (implies -v)
 
 --recursive, -r     Delete directories, too (recursively)
 
@@ -73,7 +73,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # $Id$
 
 # Info about the module
-__version__   = '1.1.2'
+__version__   = '2.0.0'
 __author__    = 'Brian Clapper'
 __email__     = 'bmc@clapper.org'
 __url__       = 'http://github.com/bmc/retain'
@@ -254,14 +254,14 @@ class FileRetainer:
                 else:
                     answer = raw_input(fpath + " was not found, continue? (y/n)\n")
                     if answer.lower() != "y":
-                        raise RetainException, "User canceled execution."
+                        raise RetainException, "User canceled execution"
 
     def __usage(self, prog, msg):
         u = [
 "",
 "retain, version %s" % __version__,
 "",
-"Usage: %s [OPTIONS] filename [...]" % os.path.basename(prog),
+"Usage: %s [-fnrsv] [-d directory] filename [...]" % os.path.basename(prog),
 "",
 "Retain all the specified files, removing anything else.",
 "",
@@ -270,7 +270,7 @@ class FileRetainer:
 "--directory <dir>",
 "-d <dir>           Directory to operate on. Defaults to current directory",
 "--force, -f         Do not ask for confirmation if file is not found (overrides any previous -s option)",          
-"--no-exec, -n      Show what would be done, but don't really do it",
+"--no-exec, -n      Show what would be done, but don't really do it (implies -v)",
 "--recursive, -r    Delete directories, too (recursively)",
 "--safe, -s         If a file is not found, program exits, nothing is deleted (overrides any previous -f option)",
 "--verbose, -v      Enable verbose messages"
@@ -306,7 +306,6 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()

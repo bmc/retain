@@ -6,13 +6,15 @@ specified in its argument list. Conceptually, it's the opposite of
 
 # Usage
 
-*retain* [OPTIONS] *filename* [...]
+*retain* [-fnrsv] [-d directory] *filename* [...]
 
 ## Options
 
-* `--directory`: The directory to operate on. Defaults to the current directory.
-* `--no-exec` or `-n`: Show what would be done, but don't do it.
+* `--directory` or `-d`: The directory to operate on. Defaults to the current directory.
+* `--force` or `-f`: Do not ask for confirmation if file is not found (overrides any previous `-s` option)
+* `--no-exec` or `-n`: Show what would be done, but don't do it (implies `-v`).
 * `--recursive` or `-r`: Remove subdirectories, too (recursively).
+* `--safe` or `-s`: If a file is not found, program exits, nothing is deleted (overrides any previous `-f` option)
 * `--verbose` or `-v`: Display verbose messages
 
 # Installation
