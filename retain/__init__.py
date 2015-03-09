@@ -16,9 +16,13 @@ Options:
 --directory <dir>   The directory to operate on. Defaults to the current
 -d <dir>            directory.
 
+--force, -f         Do not ask for confirmation if file to retain          
+
 --no-exec, -n       Show what would be done, but do not actually do it.
 
 --recursive, -r     Delete directories, too (recursively)
+
+"--safe, -s         If a file is not found, program exits, nothing is deleted (overrides any previous -f option)",
 
 --verbose, -v       Enable verbose messages
 
@@ -182,23 +186,21 @@ class FileRetainer:
 
         try:
             opts, args = getopt(argv[1:],
-                                "nvrd:",
+                                "nvrfsd:",
                                 ["directory=",
                                  "no-exec",
                                  "recursive",
-                                 "verbose"])
+                                 "verbose",
+                                 "force",
+                                 "safe"])
         except GetoptError, ex:
             self.__usage(argv[0], str (ex))   # throws an exception
-
-        files = []
-        if len(args) > 0:
-            self.__files = set(args[0:])
-        else:
-            self.__usage(argv[0], "Missing file(s) to retain.")
 
         self.__no_exec   = 0
         self.__verbose   = 0
         self.__recursive = 0
+        self.__force     = 0
+        self.__safe      = 0
         self.__dir       = "."
 
         for o, a in opts:
@@ -219,6 +221,41 @@ class FileRetainer:
                 self.__recursive = 1
                 continue
 
+            if o in ("--force", "-f"):
+                self.__force = 1
+                self.__safe = 0
+                continue
+
+            if o in ("--safe", "-s"):
+                self.__safe = 1
+                self.__force = 0
+                continue
+        
+        files = []
+        if len(args) > 0:
+            self.__files = set(args[0:])
+            
+            if not self.__force:
+                self.__checkFiles(self.__files)
+        else:
+            self.__usage(argv[0], "Missing file(s) to retain.")
+
+
+    def __checkFiles(self, files):
+        for fname in files:
+            if self.__dir != ".":
+                fpath = self.__dir + os.path.sep + fname
+            else:
+                fpath = fname
+
+            if not (os.path.isfile(fpath)) and not (self.__recursive and os.path.isdir(fpath)):
+                if self.__safe:
+                    raise RetainException, fpath + " not found, canceling execution."
+                else:
+                    answer = raw_input(fpath + " was not found, continue? (y/n)\n")
+                    if answer.lower() != "y":
+                        raise RetainException, "User canceled execution."
+
     def __usage(self, prog, msg):
         u = [
 "",
@@ -232,8 +269,10 @@ class FileRetainer:
 "",
 "--directory <dir>",
 "-d <dir>           Directory to operate on. Defaults to current directory",
-"--no-exec, -n      Show what would be done, but don't really do it.",
+"--force, -f         Do not ask for confirmation if file is not found (overrides any previous -s option)",          
+"--no-exec, -n      Show what would be done, but don't really do it",
 "--recursive, -r    Delete directories, too (recursively)",
+"--safe, -s         If a file is not found, program exits, nothing is deleted (overrides any previous -f option)",
 "--verbose, -v      Enable verbose messages"
             ]
 
