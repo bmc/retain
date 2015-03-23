@@ -73,7 +73,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # $Id$
 
 # Info about the module
-__version__   = '2.0.0'
+__version__   = '2.0.1'
 __author__    = 'Brian Clapper'
 __email__     = 'bmc@clapper.org'
 __url__       = 'http://github.com/bmc/retain'
@@ -163,24 +163,26 @@ class FileRetainer:
             verbose("Retaining " + dirFile)
             return
         
-        verbose("Deleting " + dirFile)
-        if not self.__no_exec:
-            try:
-                mode = os.stat(dirFile)[stat.ST_MODE]
-                if stat.S_ISDIR(mode):
-                    if not self.__recursive:
-                        sys.stderr.write("Skipping directory \"" +
-                                         dirFile +
-                                         "\" because -r (--recursive) " +
-                                         "was not specified.\n");
-                    else:
-                        shutil.rmtree(dirFile)
+        try:
+            mode = os.stat(dirFile)[stat.ST_MODE]
+            if stat.S_ISDIR(mode):
+                if not self.__recursive:
+                    sys.stderr.write("Skipping directory \"" +
+                            dirFile +
+                            "\" because -r (--recursive) " +
+                            "was not specified.\n");
                 else:
+                    verbose("Deleting " + dirFile)
+                    if not self.__no_exec:
+                        shutil.rmtree(dirFile)
+            else:
+                verbose("Deleting " + dirFile)
+                if not self.__no_exec:
                     os.unlink(dirFile)
-        
-            except OSError, ex:
-                sys.stderr.write("Warning: Can't unlink \"" + dirFile +
-                                 "\": " + str (ex) + "\n")
+
+        except OSError, ex:
+            sys.stderr.write("Warning: Can't unlink \"" + dirFile +
+                    "\": " + str (ex) + "\n")
     def __parseParams(self, argv):
         # Parse the command-line parameters
 
