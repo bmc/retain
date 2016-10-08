@@ -12,6 +12,8 @@ import retain
 setup (name="retain",
        version=retain.__version__,
        description="Delete all but the specified files/directories",
+      install_requires=['docopt >= 0.6.2',
+                        'future >= 0.15.2'],
        packages=find_packages(),
        url=retain.__url__,
        license=retain.__license__,

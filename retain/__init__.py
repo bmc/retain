@@ -5,71 +5,41 @@ retain - Command-line utility that removes all files except the ones
          specified on the command line.
 
 Usage:
-------
-
-retain [OPTIONS] filename [...]
-
+  retain --help
+  retain [options] <filename>...
 
 Options:
---------
-
---directory <dir>   The directory to operate on. Defaults to the current
--d <dir>            directory.
-
---no-exec, -n       Show what would be done, but do not actually do it.
-
---recursive, -r     Delete directories, too (recursively)
-
---verbose, -v       Enable verbose messages
-
-
-Description:
-------------
-
-retain is the opposite of "rm" or "del": It takes a series of file names on
-the command line, and it deletes all files in the specified directory except
-the specified files.
-
-
-Copyright and License:
-----------------------
-
-Copyright © 2008 Brian M. Clapper
-
-This is free software, released under the following BSD-like license:
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
-
-2. The end-user documentation included with the redistribution, if any,
-   must include the following acknowlegement:
-
-      This product includes software developed by Brian M. Clapper
-      (bmc@clapper.org, http://www.clapper.org/bmc/). That software is
-      copyright © 2008 Brian M. Clapper.
-
-    Alternately, this acknowlegement may appear in the software itself, if
-    and wherever such third-party acknowlegements normally appear.
-
-THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
-EVENT SHALL BRIAN M. CLAPPER BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+  --help                      This message.
+  --directory <dir>, -d <dir> The directory to operate on [default: .]
+  --no-exec, -n               Show what would be done, but do not actually
+                              do it.
+  --recursive, -r             Delete directories, too (recursively).
+  --verbose, -v               Enable verbose messages
+  --version                   Display version and exit.
 '''
 
-# $Id$
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from builtins import (bytes, dict, int, list, object, range, str, ascii,
+                      chr, hex, input, next, oct, open, pow, round, super,
+                      filter, map, zip)
+from future.standard_library import install_aliases
+install_aliases()
+
+from docopt import docopt
+import string
+import sys
+import os
+import stat
+import shutil
 
 # Info about the module
-__version__   = '1.1.2'
+__version__   = '1.2.0'
 __author__    = 'Brian Clapper'
 __email__     = 'bmc@clapper.org'
 __url__       = 'http://github.com/bmc/retain'
@@ -80,51 +50,28 @@ __license__   = 'BSD-style license'
 
 __all__     = ["retain"]
 
-# Use the built-in 'set' type if using Python 2.4 or better. Otherwise, use
-# the old sets module.
-try:
-    set
-except NameError:
-    from sets import Set as set, ImmutableSet as frozenset
-
-# ---------------------------------------------------------------------------
-# Imports
-# ---------------------------------------------------------------------------
-
-from getopt import getopt, GetoptError
-import string
-import sys
-import os
-from sets import Set
-import stat
-import shutil
-
 # ---------------------------------------------------------------------------
 # Classes
 # ---------------------------------------------------------------------------
 
 class RetainException(Exception):
     def __init__(self, value):
-        self.__value = value
+        self._value = value
 
     def __str__(self):
-        return `self.__value`
+        return str(self._value)
 
     def get_value(self):
-        return self.__value
+        return self._value
 
     value = property(get_value, doc="Get the string for the exception")
 
-class RetainUsageException(RetainException):
-    def __init__(self, value):
-        RetainException.__init__(self, value)
-
 class Verbose:
-    def __init__(self, verbose=0):
-        self.__verbose = verbose
+    def __init__(self, verbose=False):
+        self._verbose = verbose
 
     def println(self, msg):
-        if self.__verbose:
+        if self._verbose:
             sys.stderr.write(msg + "\n")
 
     def __call__(self, msg):
@@ -133,119 +80,65 @@ class Verbose:
 class FileRetainer:
 
     def __init__(self, argv):
-        self.__parseParams(argv)
-        self.__verbose = Verbose(self.__verbose)
+        self._parseParams(argv)
+        self._verbose = Verbose(self._verbose)
 
     def retain(self):
-        verbose = self.__verbose
+        verbose = self._verbose
 
-        verbose("Changing directory to " + self.__dir)
+        verbose('Changing directory to "{0}"'.format(self._dir))
         try:
-            os.chdir(self.__dir)
+            os.chdir(self._dir)
 
-        except OSError, ex:
+        except OSError as ex:
             raise RetainException(str(ex))
 
-        for dirFile in os.listdir("."):
-            self.__process_file(dirFile)
+        for dir_file in os.listdir("."):
+            self._process_file(dir_file)
 
     # -----------------------------------------------------------------------
     # Private Methods
     # -----------------------------------------------------------------------
 
-    def __process_file(self, dirFile):
-        verbose = self.__verbose
-        if dirFile in self.__files:
-            verbose("Retaining " + dirFile)
+    def _process_file(self, dir_file):
+        verbose = self._verbose
+        if dir_file in self._files:
+            verbose('Retaining "{0}"'.format(dir_file))
             return
         
-        verbose("Deleting " + dirFile)
-        if not self.__no_exec:
+        verbose('Deleting "{0}"'.format(dir_file))
+        if not self._no_exec:
             try:
-                mode = os.stat(dirFile)[stat.ST_MODE]
+                mode = os.stat(dir_file)[stat.ST_MODE]
                 if stat.S_ISDIR(mode):
-                    if not self.__recursive:
-                        sys.stderr.write("Skipping directory \"" +
-                                         dirFile +
-                                         "\" because -r (--recursive) " +
-                                         "was not specified.\n");
+                    if not self._recursive:
+                        sys.stderr.write('Skipping directory "{0}"\n'.format(
+                            dir_file
+                        ))
                     else:
-                        shutil.rmtree(dirFile)
+                        shutil.rmtree(dir_file)
                 else:
-                    os.unlink(dirFile)
+                    os.unlink(dir_file)
         
-            except OSError, ex:
-                sys.stderr.write("Warning: Can't unlink \"" + dirFile +
-                                 "\": " + str (ex) + "\n")
-    def __parseParams(self, argv):
+            except OSError as ex:
+                sys.stderr.write('Warning: Cannot delete "{0}": {1}\n'.format(
+                    dir_file, str(ex)
+                ))
+
+
+    def _parseParams(self, argv):
         # Parse the command-line parameters
 
-        try:
-            opts, args = getopt(argv[1:],
-                                "nvrd:",
-                                ["directory=",
-                                 "no-exec",
-                                 "recursive",
-                                 "verbose"])
-        except GetoptError, ex:
-            self.__usage(argv[0], str (ex))   # throws an exception
+        opts = docopt(__doc__, version=__version__)
+        self._files = opts["<filename>"]
 
-        files = []
-        if len(args) > 0:
-            self.__files = set(args[0:])
-        else:
-            self.__usage(argv[0], "Missing file(s) to retain.")
+        self._no_exec   = opts["--no-exec"]
+        self._verbose   = opts["--verbose"]
+        self._recursive = opts["--recursive"]
+        self._dir       = opts["--directory"] or "."
 
-        self.__no_exec   = 0
-        self.__verbose   = 0
-        self.__recursive = 0
-        self.__dir       = "."
-
-        for o, a in opts:
-            if o in ("--no-exec", "-n"):
-                self.__no_exec = 1
-                self.__verbose = 1
-                continue
-
-            if o in ("--verbose", "-v"):
-                self.__verbose = 1
-                continue
-
-            if o in ("--directory", "-d"):
-                self.__dir = a
-                continue
-
-            if o in ("--recursive", "-r"):
-                self.__recursive = 1
-                continue
-
-    def __usage(self, prog, msg):
-        u = [
-"",
-"retain, version %s" % __version__,
-"",
-"Usage: %s [OPTIONS] filename [...]" % os.path.basename(prog),
-"",
-"Retain all the specified files, removing anything else.",
-"",
-"OPTIONS",
-"",
-"--directory <dir>",
-"-d <dir>           Directory to operate on. Defaults to current directory",
-"--no-exec, -n      Show what would be done, but don't really do it.",
-"--recursive, -r    Delete directories, too (recursively)",
-"--verbose, -v      Enable verbose messages"
-            ]
-
-        result = []
-
-        if msg != None:
-            result.append(msg)
-
-        for i in range (len (u)):
-            result.append(u[i])
-
-        raise RetainUsageException, result
+        if self._no_exec:
+            self._verbose = True
 
 # ---------------------------------------------------------------------------
 # Main Program
@@ -257,12 +150,7 @@ def main():
         retainer = FileRetainer(sys.argv)
         retainer.retain()
 
-    except RetainUsageException, ex:
-        for i in ex.value:
-            sys.stderr.write(i + "\n")
-        sys.exit(1)
-
-    except RetainException, ex:
+    except RetainException as ex:
         sys.stderr.write(str (ex) + "\n")
         sys.exit(1)
 
