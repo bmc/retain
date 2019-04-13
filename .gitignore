@@ -3,3 +3,5 @@ dist
 *.pyc
 *.egg-info
 /tmp
+.idea
+*.iml
