@@ -44,14 +44,15 @@ __license__   = 'BSD-style license'
 # ---------------------------------------------------------------------------
 
 class RetainException(Exception):
-    def __init__(self, value):
+    def __init__(self, value: str):
+        super(Exception).__init__(value)
         self._value = value
 
     def __str__(self):
         return str(self._value)
 
     @property
-    def value(self):
+    def value(self) -> str:
         return self._value
 
 
@@ -59,11 +60,11 @@ class Verbose:
     def __init__(self, verbose: bool = False):
         self._verbose = verbose
 
-    def println(self, msg: str):
+    def println(self, msg: str) -> None:
         if self._verbose:
             print(msg, file=sys.stderr)
 
-    def __call__(self, msg: str):
+    def __call__(self, msg: str) -> None:
         self.println(msg)
 
 
@@ -73,7 +74,7 @@ class FileRetainer:
         self._parseParams(argv)
         self._verbose = Verbose(self._be_verbose)
 
-    def retain(self):
+    def retain(self) -> None:
         verbose = self._verbose
 
         verbose(f'Changing directory to "{self._dir}"')
@@ -90,7 +91,7 @@ class FileRetainer:
     # Private Methods
     # -----------------------------------------------------------------------
 
-    def _process_file(self, dir_file: str):
+    def _process_file(self, dir_file: str) -> None:
         verbose = self._verbose
         if dir_file in self._files:
             verbose(f'Retaining "{dir_file}"')
@@ -114,7 +115,7 @@ class FileRetainer:
                       file=sys.stderr)
 
 
-    def _parseParams(self, argv):
+    def _parseParams(self, argv: Sequence[str]) -> None:
         # Parse the command-line parameters
 
         opts = docopt(__doc__, version=__version__)
