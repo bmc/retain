@@ -61,7 +61,7 @@ class Verbose:
 
     def println(self, msg: str):
         if self._verbose:
-            sys.stderr.write(msg + "\n")
+            print(msg, file=sys.stderr)
 
     def __call__(self, msg: str):
         self.println(msg)
@@ -102,7 +102,8 @@ class FileRetainer:
                 mode = os.stat(dir_file)[stat.ST_MODE]
                 if stat.S_ISDIR(mode):
                     if not self._recursive:
-                        sys.stderr.write(f'Skipping directory "{dir_file}"')
+                        print(f'Skipping directory "{dir_file}"',
+                              file=sys.stderr)
                     else:
                         shutil.rmtree(dir_file)
                 else:
