@@ -1,150 +1,164 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
-'''
-retain - Command-line utility that removes all files except the ones
-         specified on the command line.
-
-Usage:
-  retain --help
-  retain [options] <filename>...
-
-Options:
-  --help                      This message.
-  --directory <dir>, -d <dir> The directory to operate on [default: .]
-  --no-exec, -n               Show what would be done, but do not actually
-                              do it.
-  --recursive, -r             Delete directories, too (recursively).
-  --verbose, -v               Enable verbose messages
-  --version                   Display version and exit.
-'''
-
+"""
+retain - Delete all files except the ones on the command line. Run with
+         "--help" for complete details.
+"""
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-from docopt import docopt
 import sys
 import os
-import stat
 import shutil
-from typing import Sequence
+import click
+from dataclasses import dataclass
+from typing import Sequence as Seq, Optional, Callable
 
 # Info about the module
 __version__   = '1.3.0'
 __author__    = 'Brian Clapper'
 __email__     = 'bmc@clapper.org'
-__url__       = 'http://github.com/bmc/retain'
-__copyright__ = '© 2003-2019 Brian M. Clapper'
-__license__   = 'BSD-style license'
-
-# Package stuff
+__url__       = 'https://github.com/bmc/retain'
+__copyright__ = '2003-2023 Brian M. Clapper'
+__license__   = 'Apache Software License'
 
 # ---------------------------------------------------------------------------
 # Classes
 # ---------------------------------------------------------------------------
 
-class RetainException(Exception):
-    def __init__(self, value: str):
-        super(Exception).__init__(value)
-        self._value = value
+@dataclass(frozen=True)
+class Params:
+    dry_run: bool
+    verbose: bool
+    recursive: bool
+    keep_hidden: bool
+    fail_early: bool
+    files_to_keep: Seq[str]
 
-    def __str__(self):
-        return str(self._value)
+# ---------------------------------------------------------------------------
+# Internal Functions
+# ---------------------------------------------------------------------------
 
-    @property
-    def value(self) -> str:
-        return self._value
+def warn(msg: str, use_prefix: bool = True) -> None:
+    if use_prefix:
+        msg = f'WARNING: {msg}'
 
+    print(msg, file=sys.stderr)
 
-class Verbose:
-    def __init__(self, verbose: bool = False):
-        self._verbose = verbose
+def process_file(file: str,
+                 params: Params,
+                 verbose: Callable[[str], None]) -> None:
+    """
+    Assumes the current working directory is now params.directory,
+    and processes one file within that directory.
+    """
 
-    def println(self, msg: str) -> None:
-        if self._verbose:
-            print(msg, file=sys.stderr)
+    if file in params.files_to_keep:
+        verbose(f'Retaining "{file}".')
+        return
 
-    def __call__(self, msg: str) -> None:
-        self.println(msg)
+    if params.keep_hidden and (file[0] == '.'):
+        verbose(f'Skipping hidden file "{file}".')
+        return
 
+    try:
+        if os.path.isdir(file):
+            if not params.recursive:
+                warn(f'Skipping directory "{file}".', use_prefix=False)
+            else:
+                verbose(f'Recursively deleting directory "{file}"...')
+                if not params.dry_run:
+                    shutil.rmtree(file)
+        else:
+            verbose(f'Deleting file "{file}".')
+            if not params.dry_run:
+                os.unlink(file)
 
-class FileRetainer:
+    except OSError as e:
+        msg = f"""Can't delete "{file}": {e} """
+        if params.fail_early:
+            raise click.ClickException(msg)
+        else:
+            warn(msg)
 
-    def __init__(self, argv: Sequence[str]):
-        self._parseParams(argv)
-        self._verbose = Verbose(self._be_verbose)
+def retain_files(params: Params) -> None:
+    verbose = lambda msg: print(msg) if params.verbose else lambda _: None
 
-    def retain(self) -> None:
-        verbose = self._verbose
-
-        verbose(f'Changing directory to "{self._dir}"')
-        try:
-            os.chdir(self._dir)
-
-        except OSError as ex:
-            raise RetainException(str(ex))
-
-        for dir_file in os.listdir("."):
-            self._process_file(dir_file)
-
-    # -----------------------------------------------------------------------
-    # Private Methods
-    # -----------------------------------------------------------------------
-
-    def _process_file(self, dir_file: str) -> None:
-        verbose = self._verbose
-        if dir_file in self._files:
-            verbose(f'Retaining "{dir_file}"')
-            return
-        
-        verbose(f'Deleting "{dir_file}"')
-        if not self._no_exec:
-            try:
-                mode = os.stat(dir_file)[stat.ST_MODE]
-                if stat.S_ISDIR(mode):
-                    if not self._recursive:
-                        print(f'Skipping directory "{dir_file}"',
-                              file=sys.stderr)
-                    else:
-                        shutil.rmtree(dir_file)
-                else:
-                    os.unlink(dir_file)
-        
-            except OSError as ex:
-                print(f'Warning: Cannot delete "{dir_file}": {ex}',
-                      file=sys.stderr)
-
-
-    def _parseParams(self, argv: Sequence[str]) -> None:
-        # Parse the command-line parameters
-
-        opts = docopt(__doc__, version=__version__)
-        self._files = opts["<filename>"]
-
-        self._no_exec    = opts["--no-exec"]
-        self._be_verbose = opts["--verbose"]
-        self._recursive  = opts["--recursive"]
-        self._dir        = opts["--directory"] or "."
-
-        if self._no_exec:
-            self._verbose = True
+    for file in os.listdir('.'):
+        # os.listdir() does not return "." or ".."
+        process_file(file, params=params, verbose=verbose)
 
 # ---------------------------------------------------------------------------
 # Main Program
 # ---------------------------------------------------------------------------
 
-def main():
+@click.command()
+@click.option('-D', '--keep-hidden', is_flag=True,
+              help='Automatically retain all "hidden" files (i.e., files '
+                   'whose names start with ".").')
+@click.option('-e', '--fail-early', is_flag=True,
+              help='Normally, if a deletion fails, retain prints a '
+                   'warning and keeps going. With this option, retain '
+                   'aborts the first time it fails to delete a file.')
+@click.option('-n', '--dry-run', '--no-exec', '--show-only', is_flag=True,
+              help="Show what would be done, but don't actually do it."
+                   "Implies --verbose.")
+@click.option('-r', '--recursive', is_flag=True,
+              help='Delete directories, too (recursively).')
+@click.option('-v', '--verbose', is_flag=True,
+              help="Display what's being done as it's being done.")
+@click.version_option(version=__version__)
+@click.argument('file', nargs=-1, required=True)
+def retain(dry_run: bool,
+           recursive: bool,
+           keep_hidden: bool,
+           fail_early: bool,
+           verbose: bool,
+           file: Seq[str]) -> None:
+    """
+    Remove all files except the ones specified on the command line. Think of
+    "retain" as the opposite of "rm": It selectively keeps files, instead of
+    selectively deleting them. (It's a great tool for cleaning up your
+    "Downloads" directory, for instance.)
 
-    try:
-        retainer = FileRetainer(sys.argv)
-        retainer.retain()
+    Each FILE is assumed to be in the current directory; paths outside
+    the current directory are skipped. That includes paths below the current
+    directory. Currently "retain" won't allow you to delete all but some files
+    in directories below the current directory. That is, something like this
+    won't work:
 
-    except RetainException as ex:
-        sys.stderr.write(str (ex) + "\n")
-        sys.exit(1)
+    $ retain -r a b subdir/foo
 
-    sys.exit(0)
+    The intend of that command is to delete all files and directories in
+    the current directory EXCEPT for "a" and "b", and to clean out subdirectory
+    "subdir" except for "subdir/foo", not deleting "subdir".
 
+    Currently, "retain" simply doesn't support that level of complexity.
+    You can delete all but the specified files in the current directory,
+    implicitly leaving subdirectories alone (no --recursive option specified);
+    or, you can delete all but the specified files and directories in the
+    current directory, deleting all other files and directories (--recursive
+    specified.)
+    """
+
+    adjusted_files = []
+    for f in file:
+        parent_dir = os.path.dirname(f)
+        if parent_dir in ('', '.'):
+            adjusted_files.append(f)
+        else:
+            warn(f"""Ignoring specified path "{f}": It's outside the """
+                 'current directory.')
+
+    params = Params(
+        dry_run=dry_run,
+        recursive=recursive,
+        keep_hidden=keep_hidden,
+        fail_early=fail_early,
+        verbose=verbose or dry_run,
+        files_to_keep=adjusted_files
+    )
+    retain_files(params)
 
 if __name__ == "__main__":
-    main()
+    retain()
