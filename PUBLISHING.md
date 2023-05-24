@@ -11,5 +11,21 @@ $ pip install twine
 $ pip install 'readme_renderer[md]'
 $ python setup.py sdist bdist_wheel
 $ twine check dist/*
-$ twine upload dist/*
+```
+
+If all looks good, then:
+
+```
+$ twine -r pypi upload dist/*
+```
+
+Note: This assumes the existence of something like the following in
+`~/.pypirc`:
+
+```
+[pypi]
+[pypi]
+repository = https://upload.pypi.org/legacy/
+username = __token__
+password = <pypi API token goes here>
 ```
