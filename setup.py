@@ -9,7 +9,8 @@ import retain
 setup (
     name="retain",
     version=retain.__version__,
-    description="Delete all but the specified files/directories",
+    long_description=retain.__doc__,
+    long_description_content_type="text/plain",
     install_requires=[
         'click >= 8.0.0',
     ],
