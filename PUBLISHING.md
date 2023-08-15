@@ -16,7 +16,7 @@ $ twine check dist/*
 If all looks good, then:
 
 ```
-$ twine -r pypi upload dist/*
+$ twine upload dist/*
 ```
 
 Note: This assumes the existence of something like the following in
