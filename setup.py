@@ -19,7 +19,7 @@ setup (
     license=retain.__license__,
     author=retain.__author__,
     author_email=retain.__email__,
-    entry_points = {'console_scripts' : 'retain=retain:main'},
+    entry_points = {'console_scripts' : 'retain=retain:retain'},
     classifiers = [
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
