@@ -5,6 +5,12 @@
 echo "Checking types ..."
 pyright || exit 1
 
+echo "Running pylint"
+pylint retain || exit 1
+
+echo "Running pycheck"
+pycheck retain/*.py || exit 1
+
 echo "Sorting imports in $i"
 isort retain/*.py
 

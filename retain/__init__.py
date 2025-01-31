@@ -31,6 +31,10 @@ __license__ = "Apache Software License"
 
 @dataclass(frozen=True)
 class Params:
+    """
+    Parsed command-line parameters.
+    """
+
     dry_run: bool
     verbose: bool
     recursive: bool
@@ -45,6 +49,9 @@ class Params:
 
 
 def warn(msg: str, use_prefix: bool = True) -> None:
+    """
+    Print a warning message to stderr.
+    """
     if use_prefix:
         msg = f"WARNING: {msg}"
 
@@ -84,18 +91,19 @@ def process_file(
         msg = f"""Can't delete "{file}": {e} """
         if params.fail_early:
             raise click.ClickException(msg)
-        else:
-            warn(msg)
+
+        warn(msg)
 
 
 def retain_files(params: Params) -> None:
-    def _no_verbose(msg: str) -> None:
-        pass
+    """
+    Retain the files specified in the params object.
+    """
 
     def _verbose(msg: str) -> None:
         print(msg)
 
-    verbose = _verbose if params.verbose else _no_verbose
+    verbose = _verbose if params.verbose else lambda _: None
 
     for file in os.listdir("."):
         # os.listdir() does not return "." or ".."
@@ -146,6 +154,7 @@ def retain_files(params: Params) -> None:
 )
 @click.version_option(version=__version__)
 @click.argument("file", nargs=-1, required=True)
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def retain(
     dry_run: bool,
     recursive: bool,
@@ -203,4 +212,5 @@ def retain(
 
 
 if __name__ == "__main__":
+    # pylint: disable=no-value-for-parameter
     retain()
