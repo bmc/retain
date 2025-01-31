@@ -21,7 +21,7 @@ __version__ = "1.3.0"
 __author__ = "Brian Clapper"
 __email__ = "bmc@clapper.org"
 __url__ = "https://github.com/bmc/retain"
-__copyright__ = "2003-2023 Brian M. Clapper"
+__copyright__ = "2003-2025 Brian M. Clapper"
 __license__ = "Apache Software License"
 
 # ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ def retain_files(params: Params) -> None:
 @click.version_option(version=__version__)
 @click.argument("file", nargs=-1, required=True)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
-def retain(
+def main(
     dry_run: bool,
     recursive: bool,
     keep_hidden: bool,
@@ -213,4 +213,4 @@ def retain(
 
 if __name__ == "__main__":
     # pylint: disable=no-value-for-parameter
-    retain()
+    main()
